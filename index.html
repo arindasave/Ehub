@@ -95,10 +95,15 @@ a{color:var(--accent)}
   background:var(--accent);padding:2px 7px;border-radius:5px;flex:0 0 auto}
 .tool h3{font-size:14px;flex:1;min-width:0}
 .tool .n{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.tool .lnk{display:flex;gap:7px;align-items:center}
-.tool input{flex:1;min-width:0;background:var(--sunk);border:1px solid var(--line-2);border-radius:7px;
-  padding:6px 9px;font-size:12px;font-family:var(--mono)}
 .tool .row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+a.tool{text-decoration:none;color:inherit;transition:border-color .12s,transform .12s,box-shadow .12s}
+a.tool:hover{border-color:var(--accent);transform:translateY(-2px);
+  box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 16%,transparent)}
+a.tool:active{transform:translateY(0)}
+.tool .go{margin-top:auto;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--accent)}
+.tool .go svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool.pending{opacity:.72;border-style:dashed}
+.tool.pending .go{color:var(--muted);font-weight:500}
 
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:11px;margin-bottom:18px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
@@ -204,6 +209,19 @@ const SCHEMA = {"households":{"label":"Household survey","badge":"T1","tool":"To
 const KEYS = Object.keys(SCHEMA);
 const VILLAGES = {NYA:"Nyabubare", KIY:"Kiyoima", NKI:"Nkingo"};
 
+/* Deployed KoBoToolbox forms. Enketo "Online-Offline" links, which keep working
+   when the phone loses signal. VSLA mapping is not yet deployed. */
+const URLS = {
+  households:   "https://ee-eu.kobotoolbox.org/x/1qqppS6x",
+  institutions: "https://ee-eu.kobotoolbox.org/x/wpAXmSib",
+  kii:          "https://ee-eu.kobotoolbox.org/x/nAHeqbLr",
+  fgd:          "https://ee-eu.kobotoolbox.org/x/ZvfPaxvj",
+  sites:        "https://ee-eu.kobotoolbox.org/x/cGZY6OdM",
+  vslas:        "https://ee-eu.kobotoolbox.org/x/AMOoZ4Mh",
+  knowledge:    "https://ee-eu.kobotoolbox.org/x/kePOgx1Y",
+  observation:  "https://ee-eu.kobotoolbox.org/x/HPfNc7Bl"
+};
+
 const INDICATORS = [
   {ref:"1.1", name:"Partner institutions using energy-efficient cookstoves", target:6,    unit:"institutions"},
   {ref:"1.2", name:"Reduction in institutional firewood consumption",        target:40,   unit:"per cent", pct:true},
@@ -239,7 +257,7 @@ const TABS = [
 const store = {}; KEYS.forEach(k => store[k] = []);
 let db=null, userCap=null, canWrite=null, ready=false;
 let tab="indicators", recordSet="households", search="", villageFilter="";
-let links={}, manual={ambassadors:0};
+let manual={ambassadors:0};
 let importSet="households", staged=null, importing=false, importMsg="";
 
 const el=(t,c,h)=>{const n=document.createElement(t); if(c)n.className=c; if(h!=null)n.innerHTML=h; return n;};
@@ -337,65 +355,48 @@ function villagePicker(onChange){
   return s;
 }
 
-/* ===== COLLECT: links out to KoBo ===== */
+/* ===== COLLECT: one tap straight into the KoBo form ===== */
+const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+
 function viewCollect(){
   const w=el("div");
   w.appendChild(head("Collect",
-    "Data is collected in KoBoToolbox, which works offline in the field and keeps the authoritative copy. Paste each project's form link once and it is saved for everyone with access."));
-  const b=stateBanner(); if(b) w.appendChild(b);
+    "Tap an instrument to open its KoBoToolbox form. KoBo works offline in the field and holds the authoritative copy of every submission; this platform holds the imported copy for analysis."));
 
   const g=el("div","tools");
   KEYS.forEach(k=>{
-    const S=SCHEMA[k], url=(links[k]||"").trim();
-    const c=el("div","tool");
+    const S=SCHEMA[k], url=URLS[k];
+    const c = url ? el("a","tool") : el("div","tool pending");
+    if(url){ c.href=url; c.target="_blank"; c.rel="noopener";
+             c.setAttribute("aria-label","Open the "+S.label+" form in KoBoToolbox"); }
     const top=el("div","top");
     top.appendChild(el("span","badge",esc(S.badge)));
     top.appendChild(el("h3",null,esc(S.label)));
     c.appendChild(top);
-    c.appendChild(el("div","n", S.fields.length+" fields · "+store[k].length+" records held here"));
-
-    const lnk=el("div","lnk");
-    const inp=el("input"); inp.type="url"; inp.id="lk_"+k; inp.value=url;
-    inp.placeholder="https://ee.kobotoolbox.org/x/…";
-    inp.setAttribute("aria-label","KoBo form link for "+S.label);
-    if(canWrite===false||!ready) inp.disabled=true;
-    lnk.appendChild(inp);
-    c.appendChild(lnk);
-
-    const row=el("div","row");
-    const open=el("a","btn sm"+(url?"":" off"));
-    open.textContent="Open form"; open.target="_blank"; open.rel="noopener";
-    if(url) open.href=url;
-    row.appendChild(open);
-    const save=el("button","btn ghost sm"); save.textContent="Save link";
-    if(canWrite===false||!ready) save.disabled=true;
-    const msg=el("span","n");
-    save.onclick=async()=>{
-      if(!db) return;
-      save.disabled=true; msg.textContent="Saving…";
-      const next=Object.assign({},links); next[k]=inp.value.trim();
-      try{ await db.doc("meta/kobo").set(Object.assign({},next,{_updated:new Date().toISOString()}));
-           msg.textContent="Saved."; }
-      catch(e){ msg.textContent="Could not save."; }
-      save.disabled=canWrite===false;
-    };
-    row.appendChild(save); row.appendChild(msg);
-    c.appendChild(row);
+    c.appendChild(el("div","n", S.fields.length+" fields \u00b7 "+store[k].length+" records imported"));
+    c.appendChild(el("div","go", url ? "Open form in KoBo "+ARROW : "Form not yet deployed"));
     g.appendChild(c);
   });
   w.appendChild(g);
 
+  const missing = KEYS.filter(k=>!URLS[k]);
+  if(missing.length) w.appendChild(el("div","banner warnbox",
+    "<span><b>"+missing.map(k=>esc(SCHEMA[k].label)).join(", ")+
+    " has no form link yet.</b> Deploy <span class=\"mono\">"+missing.map(k=>esc(SCHEMA[k].form)).join(", ")+
+    ".xlsx</span> in KoBoToolbox, then send the Online-Offline link and it can be added here.</span>"));
+
   const how=el("div","card"); how.style.marginTop="14px";
-  how.appendChild(el("h3",null,"Where to find the link in KoBo"));
+  how.appendChild(el("h3",null,"Putting a form on an enumerator's phone"));
   const ol=el("ol","steps"); ol.style.marginTop="10px";
-  ["Open the project in KoBoToolbox and deploy it if you have not already.",
-   "Go to the Form tab and choose Collect data.",
-   "Copy the Online-Offline (multiple submission) link. That version keeps working when the phone loses signal.",
-   "Paste it into the matching card above and press Save link.",
-   "On each enumerator's phone, open the link once and add it to the home screen."
+  ["Open this page on the phone and tap the instrument you need.",
+   "In the browser menu choose Add to Home screen, so the form opens like an app.",
+   "Open it once while you still have signal. Enketo caches the form on the device.",
+   "In the field it works with no network. Submissions queue on the phone.",
+   "Back in signal, open the form again and send the queued submissions.",
+   "At the end of each round, export the CSV from KoBo and bring it in on the Import tab."
   ].forEach(t=>ol.appendChild(el("li",null,esc(t))));
   how.appendChild(ol);
-  how.appendChild(el("div","note","Anyone who can open this page can see and use these links, so treat them as you would the KoBo project itself."));
+  how.appendChild(el("div","note","Anyone who can open this page can reach these forms, so treat the page as you would the KoBo project itself."));
   w.appendChild(how);
   return w;
 }
@@ -838,7 +839,7 @@ function viewReference(){
   const d4=el("dl","kv"); d4.style.marginTop="10px";
   KEYS.forEach(k=>{
     d4.appendChild(el("dt",null,SCHEMA[k].badge+" "+esc(SCHEMA[k].label)));
-    d4.appendChild(el("dd",null,(links[k]?"linked":"no link")+" · "+store[k].length+" records"));
+    d4.appendChild(el("dd",null,(URLS[k]?"form live":"not deployed")+" · "+store[k].length+" records"));
   });
   c4.appendChild(d4);
   c4.appendChild(el("div","note","KoBo holds the authoritative copy of every submission. This platform holds an imported working copy for analysis and reporting."));
@@ -919,7 +920,6 @@ render();
       snap=>{ store[k]=snap.docs.map(d=>Object.assign({_id:d.id},d.data())); render(); },
       err=>{ conn.textContent="Store error ("+err.code+")"; led.className="led off"; });
   });
-  db.doc("meta/kobo").onSnapshot(snap=>{ links=snap.exists?(snap.data()||{}):{}; render(); },()=>{});
   db.doc("meta/manual").onSnapshot(snap=>{ manual=snap.exists?(snap.data()||{}):{ambassadors:0}; render(); },()=>{});
   render();
 })();
