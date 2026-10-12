@@ -1,0 +1,987 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Empundu Field Data Platform (Copy)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: fixed instrument rail on the left, scrolling work surface on the right;
+   rail becomes a horizontal strip above the surface at phone width. */
+:root{
+  --bg:#f3f5f2; --surface:#fcfdfb; --surface-2:#edf0ec; --sunk:#e7ebe6;
+  --ink:#0e1310; --ink-2:#4b544e; --muted:#737d77; --line:#d9e0d8; --line-2:#c3ccc2;
+  --accent:#1f4e2c; --accent-ink:#ffffff; --accent-soft:#e3eee6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --grid:#e1e6df; --axis:#c3ccc2;
+  --sans:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px; --rail:214px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0e0c; --surface:#151a17; --surface-2:#1c221e; --sunk:#101513;
+  --ink:#e9ede9; --ink-2:#b3bdb6; --muted:#8b958e; --line:#262e28; --line-2:#333d36;
+  --accent:#6bbd86; --accent-ink:#06130b; --accent-soft:#17291d;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --grid:#232b26; --axis:#333d36;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0b0e0c; --surface:#151a17; --surface-2:#1c221e; --sunk:#101513;
+  --ink:#e9ede9; --ink-2:#b3bdb6; --muted:#8b958e; --line:#262e28; --line-2:#333d36;
+  --accent:#6bbd86; --accent-ink:#06130b; --accent-soft:#17291d;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --grid:#232b26; --axis:#333d36;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-0.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  position:sticky;top:env(safe-area-inset-top,0px);align-self:start;max-height:100vh;overflow:auto}
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--line)}
+.brand .mark{display:flex;align-items:center;gap:9px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+.brand .name{font-weight:700;font-size:14.5px;letter-spacing:-0.015em}
+.brand .sub{margin-top:5px;font-size:11px;color:var(--muted);letter-spacing:.02em}
+.nav{padding:10px 8px;display:flex;flex-direction:column;gap:2px;flex:1}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;
+  padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--ink-2);font-weight:500;font-size:13.5px}
+.nav button:hover{background:var(--surface-2);color:var(--ink)}
+.nav button[aria-current="true"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.nav .ic{width:16px;height:16px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.nav .ct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.railfoot{padding:11px 16px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.stat{display:flex;align-items:center;gap:7px}
+.led{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.led.on{background:var(--good)} .led.off{background:var(--crit)}
+
+.main{min-width:0;padding:24px 28px 56px}
+.head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.head h1{font-size:21px}
+.head p{margin:5px 0 0;color:var(--muted);font-size:13px;max-width:62ch}
+.head .spacer{flex:1;min-width:0}
+
+/* ---------- components ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.grid{display:grid;gap:12px}
+.banner{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;border-radius:9px;
+  background:var(--accent-soft);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2);margin-bottom:18px}
+.banner b{color:var(--ink)}
+.banner.warnbox{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border-color:color-mix(in srgb,var(--warn) 34%,var(--line))}
+
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 15px;
+  font-weight:600;font-size:13px;cursor:pointer}
+.btn:hover{filter:brightness(1.07)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:7px}
+:is(button,input,select,textarea,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.seg{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px}
+.seg button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+  font-size:12.5px;cursor:pointer;color:var(--ink-2);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+
+/* ---------- indicators ---------- */
+.ind{display:grid;gap:10px}
+.ind-row{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;
+  display:grid;grid-template-columns:40px minmax(0,1fr) 128px;gap:14px;align-items:center}
+.ind-ref{font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500}
+.ind-name{font-size:13.5px;font-weight:500;line-height:1.35}
+.ind-target{font-size:11.5px;color:var(--muted);margin-top:3px}
+.ind-val{text-align:right}
+.ind-num{font-size:19px;font-weight:600;letter-spacing:-0.02em}
+.ind-of{font-size:11.5px;color:var(--muted);margin-top:1px}
+.track{grid-column:1/-1;height:7px;border-radius:4px;background:var(--sunk);overflow:hidden;position:relative}
+.fill{height:100%;border-radius:4px;background:var(--s1);min-width:0}
+.fill.zero{background:var(--line-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:999px;border:1px solid}
+.pill.none{color:var(--muted);border-color:var(--line-2);background:var(--surface-2)}
+.pill.go{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent);background:color-mix(in srgb,var(--good) 11%,transparent)}
+.pill.mid{color:var(--serious);border-color:color-mix(in srgb,var(--serious) 44%,transparent);background:color-mix(in srgb,var(--serious) 12%,transparent)}
+
+/* ---------- tiles ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:11px;margin-bottom:18px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+.tile .k{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.tile .v{font-size:25px;font-weight:600;letter-spacing:-0.025em;margin-top:5px;line-height:1.1}
+.tile .n{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+/* ---------- forms ---------- */
+.form{display:grid;gap:0;max-width:760px}
+.fsec{border-top:1px solid var(--line);padding:16px 0 4px}
+.fsec:first-child{border-top:0;padding-top:0}
+.fsec h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;font-weight:700}
+.f{display:grid;gap:5px;margin-bottom:13px}
+.f label{font-size:12.5px;font-weight:500;color:var(--ink)}
+.f .hint{font-size:11.5px;color:var(--muted)}
+.f input,.f select,.f textarea{background:var(--surface);border:1px solid var(--line-2);border-radius:7px;
+  padding:8px 10px;width:100%;font-size:13.5px}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent)}
+.f .req{color:var(--crit)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.formbar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);
+  padding:13px 0 calc(13px + env(safe-area-inset-bottom,0px));display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.formbar .msg{font-size:12.5px;color:var(--muted)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--surface-2);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input[type=search]{background:var(--surface);border:1px solid var(--line-2);border-radius:8px;
+  padding:7px 11px;min-width:180px;flex:1;max-width:320px;font-size:13px}
+
+/* ---------- empty ---------- */
+.empty{border:1px dashed var(--line-2);border-radius:var(--r);padding:30px 22px;text-align:center;color:var(--muted);background:var(--surface)}
+.empty b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:5px;font-weight:600}
+.empty p{margin:0 auto;max-width:46ch;font-size:12.5px}
+
+/* ---------- charts ---------- */
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px}
+.chart h3{font-size:13.5px;margin-bottom:2px}
+.chart .cap{font-size:11.5px;color:var(--muted);margin-bottom:13px}
+.bars{display:grid;gap:8px}
+.bar-row{display:grid;grid-template-columns:minmax(96px,34%) minmax(0,1fr) 54px;gap:11px;align-items:center}
+.bar-lab{font-size:12px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{height:15px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.bar-val{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:2px;flex:0 0 auto}
+
+.note{font-size:12px;color:var(--muted);margin-top:11px;line-height:1.55}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:12.5px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+@media (max-width:860px){
+  :root{--rail:100%}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}
+  .nav{flex-direction:row;overflow-x:auto;padding:8px;gap:4px}
+  .nav button{white-space:nowrap;width:auto}
+  .nav .ct{display:none}
+  .railfoot{flex-direction:row;gap:14px;flex-wrap:wrap}
+  .main{padding:18px 16px 48px}
+  .ind-row{grid-template-columns:34px minmax(0,1fr);row-gap:9px}
+  .ind-val{grid-column:2;text-align:left;display:flex;align-items:baseline;gap:8px}
+  .ind-of{margin-top:0}
+  .f2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span><span class="name">Empundu Field Data</span></div>
+      <div class="sub">Environmental Hub Uganda &middot; GEF SGP</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="railfoot">
+      <div class="stat"><span class="led" id="led"></span><span id="conn">Connecting&hellip;</span></div>
+      <div class="stat" id="whoami">&nbsp;</div>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+"use strict";
+/* ========== project constants (fixed facts from the signed grant agreement) ========== */
+const RATE = 3757.91;                       // UGX per USD, fixed by the Grant Agreement
+const VILLAGES = [["NYA","Nyabubare"],["KIY","Kiyoima"],["NKI","Nkingo"]];
+
+const INDICATORS = [
+  {ref:"1.1", name:"Partner institutions using energy-efficient cookstoves", target:6,    unit:"institutions", src:"institutions"},
+  {ref:"1.2", name:"Reduction in institutional firewood consumption",        target:40,   unit:"% reduction",  src:"institutions", pct:true},
+  {ref:"1.3", name:"Institutional users trained in stove use and maintenance", target:60, unit:"users",        src:"institutions"},
+  {ref:"1.4", name:"Indigenous seedlings raised and planted",                target:5000, unit:"seedlings",    src:"sites"},
+  {ref:"1.5", name:"Hectares of buffer and wetland under restoration",       target:10,   unit:"hectares",     src:"sites"},
+  {ref:"1.6", name:"Households benefiting from inclusive VSLAs",             target:90,   unit:"households",   src:"vslas"},
+  {ref:"1.7", name:"Conservation enterprises initiated by VSLA members",     target:30,   unit:"enterprises",  src:"vslas"},
+  {ref:"1.8", name:"Community members reached through conservation awareness", target:600, unit:"people",      src:"knowledge"},
+  {ref:"1.9", name:"Former poachers engaged as conservation ambassadors",    target:10,   unit:"ambassadors",  src:"manual"}
+];
+
+/* ========== instrument definitions — mirror the Baseline Data Collection Toolkit ========== */
+const YN = [[1,"Yes"],[0,"No"],[2,"Not sure"],[999,"Don't know"],[998,"Refused"]];
+const SEX = [[1,"Female"],[2,"Male"]];
+
+const FORMS = {
+  households: {
+    label:"Household survey", tool:"Tool 1", icon:"home", idp:"H",
+    note:"Target 180 households, 60 per village. Read the consent statement before the first question.",
+    sections:[
+      {h:"Identification", f:[
+        {id:"village", l:"Village", t:"select", o:VILLAGES, req:1},
+        {id:"date", l:"Date of interview", t:"date", req:1},
+        {id:"enumerator", l:"Enumerator initials", t:"text", req:1, hint:"As they appear on the paper form"},
+        {id:"lat", l:"GPS latitude", t:"num", step:"any", hint:"Decimal degrees, e.g. 0.41123"},
+        {id:"lon", l:"GPS longitude", t:"num", step:"any", hint:"Decimal degrees, e.g. 30.40382"},
+        {id:"consent", l:"Consent given", t:"select", o:[[1,"Yes"],[0,"No — stop the interview"]], req:1}
+      ]},
+      {h:"Household composition", f:[
+        {id:"b1_sex", l:"B1 Sex of respondent", t:"select", o:SEX},
+        {id:"b2_age", l:"B2 Age of respondent", t:"num"},
+        {id:"b4_headsex", l:"B4 Sex of household head", t:"select", o:SEX},
+        {id:"b5_educ", l:"B5 Education of head", t:"select", o:[[0,"None"],[1,"Some primary"],[2,"Completed primary"],[3,"Secondary"],[4,"Tertiary"]]},
+        {id:"b6_adults", l:"B6 Adults in household", t:"num"},
+        {id:"b6_children", l:"B6 Children under 18", t:"num"},
+        {id:"b7_vuln", l:"B7 Vulnerability", t:"select", o:[[0,"None"],[1,"Person with disability"],[2,"Elderly-headed"],[3,"Child-headed"],[4,"Widow-headed"]]}
+      ]},
+      {h:"Cooking energy and firewood — indicator 1.2", f:[
+        {id:"c1_fuel", l:"C1 Main cooking fuel", t:"select", o:[[1,"Firewood"],[2,"Charcoal"],[3,"Crop residue"],[4,"Briquette / sawdust"],[5,"LPG"],[6,"Electricity"],[7,"Other"]]},
+        {id:"c2_stove", l:"C2 Main stove type", t:"select", o:[[1,"Three-stone open fire"],[2,"Mud / improved firewood"],[3,"Metal charcoal"],[4,"Improved charcoal"],[5,"Other"]]},
+        {id:"c3_bundles", l:"C3 Firewood bundles used per week", t:"num", step:"any"},
+        {id:"c4_source", l:"C4 Main firewood source", t:"select", o:[[1,"Own farm / woodlot"],[2,"Kibale National Park"],[3,"Magombe wetland"],[4,"Neighbours' land"],[5,"Purchased"],[6,"Other"]]},
+        {id:"c5_trips", l:"C5 Collection trips per week", t:"num", step:"any"},
+        {id:"c6_hours", l:"C6 Hours per collection trip", t:"num", step:"any"},
+        {id:"c8_spend", l:"C8 Monthly fuel spend (UGX)", t:"num"},
+        {id:"c11_willing", l:"C11 Willing to use an improved cookstove", t:"select", o:YN}
+      ]},
+      {h:"Savings and enterprise — indicators 1.6, 1.7", f:[
+        {id:"e1_vsla", l:"E1 Household has a VSLA member", t:"select", o:YN},
+        {id:"e3_save", l:"E3 Monthly saving (UGX)", t:"num"},
+        {id:"e5_join", l:"E5 Willing to join a VSLA", t:"select", o:YN},
+        {id:"d5_enterprise", l:"D5 Runs a small enterprise", t:"select", o:YN}
+      ]},
+      {h:"Land, trees and restoration — indicators 1.4, 1.5", f:[
+        {id:"f1_acres", l:"F1 Land cultivated (acres)", t:"num", step:"any"},
+        {id:"f2_borders", l:"F2 Land borders a protected area", t:"select", o:[[1,"Borders the Park"],[2,"Borders the wetland"],[3,"Both"],[0,"Neither"]]},
+        {id:"f3_trees", l:"F3 Trees standing on the land", t:"select", o:[[0,"None"],[1,"1–10"],[2,"11–50"],[3,"51–200"],[4,"More than 200"],[999,"Don't know"]]},
+        {id:"f5_planted", l:"F5 Planted trees in the last 12 months", t:"select", o:YN},
+        {id:"f8_accept", l:"F8 Would accept seedlings this season", t:"select", o:YN},
+        {id:"f8_howmany", l:"F8 Seedlings the household could care for", t:"num"}
+      ]},
+      {h:"Human–wildlife interaction", f:[
+        {id:"g1_raid", l:"G1 Crop raiding in the last 12 months", t:"select", o:YN},
+        {id:"g3_incidents", l:"G3 Number of incidents", t:"num"},
+        {id:"g5_loss", l:"G5 Estimated loss (UGX)", t:"num"},
+        {id:"g8_attitude", l:"G8 Attitude towards chimpanzees", t:"select", o:[[1,"Very positive"],[2,"Positive"],[3,"Neutral"],[4,"Negative"],[5,"Very negative"]]}
+      ]},
+      {h:"Conservation knowledge — indicator 1.8", f:[
+        {id:"h1", l:"H1 Can name two benefits of the Park", t:"select", o:[[1,"Correct"],[0,"Cannot"]]},
+        {id:"h2", l:"H2 Knows cutting firewood in the Park is unlawful", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"h3", l:"H3 Can name a way to reduce firewood use", t:"select", o:[[1,"Correct"],[0,"Cannot"]]},
+        {id:"h4", l:"H4 Knows farm trees reduce forest collection", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"h6_resp", l:"H6 Who is responsible for the forest", t:"select", o:[[1,"Government / UWA only"],[2,"Community only"],[3,"Both together"],[0,"Nobody"],[999,"Don't know"]]}
+      ]}
+    ]
+  },
+
+  institutions: {
+    label:"Institutional energy", tool:"Tool 2", icon:"flame", idp:"I",
+    note:"One record per partner institution. The 40% reduction target in indicator 1.2 is measured against the baseline units recorded here, so measure rather than ask.",
+    sections:[
+      {h:"Institution", f:[
+        {id:"name", l:"Institution name", t:"text", req:1},
+        {id:"type", l:"Type", t:"select", o:[["primary","Primary school"],["secondary","Secondary school"],["health","Health facility"]]},
+        {id:"people_fed", l:"People fed per day", t:"num"},
+        {id:"meals", l:"Meals cooked per day", t:"num"}
+      ]},
+      {h:"Current cooking system", f:[
+        {id:"stove", l:"Current stove type", t:"select", o:[[1,"Three-stone open fire"],[2,"Raised mud stove"],[3,"Institutional metal stove"],[5,"Other"]]},
+        {id:"points", l:"Cooking points", t:"num"},
+        {id:"vent", l:"Kitchen ventilation", t:"select", o:[[1,"Chimney fitted"],[2,"Open eaves only"],[3,"None — smoke fills the kitchen"]]}
+      ]},
+      {h:"Firewood consumption — verify, do not estimate", f:[
+        {id:"unit", l:"Purchase unit", t:"text", hint:"Stack, lorry trip, pick-up load, tonne"},
+        {id:"units_month", l:"Baseline units consumed per month", t:"num", step:"any", req:1},
+        {id:"verify", l:"How this figure was obtained", t:"select", req:1,
+          o:[[1,"Measured or written record"],[2,"Observed"],[3,"Recall only"]],
+          hint:"Recall-only figures weaken the indicator 1.2 claim at endline"},
+        {id:"unit_m3", l:"Measured volume of one unit (m³)", t:"num", step:"any"},
+        {id:"cost_unit", l:"Cost per unit (UGX)", t:"num"},
+        {id:"from_park", l:"Ever collects from the Park or wetland", t:"select", o:YN}
+      ]},
+      {h:"Readiness and progress", f:[
+        {id:"space", l:"Space ready for an institutional stove", t:"select", o:[[1,"Yes, ready"],[2,"Yes, with modification"],[0,"No suitable space"]]},
+        {id:"committee", l:"Management committee has agreed to host", t:"select", o:YN},
+        {id:"cooks_f", l:"Cooks and kitchen staff — female", t:"num"},
+        {id:"cooks_m", l:"Cooks and kitchen staff — male", t:"num"},
+        {id:"trained", l:"Staff trained so far — indicator 1.3", t:"num"},
+        {id:"installed", l:"Cookstove installed — indicator 1.1", t:"select", o:[[1,"Yes, installed and in use"],[0,"Not yet"]]},
+        {id:"units_now", l:"Current units per month after installation", t:"num", step:"any",
+          hint:"Leave blank until the stove has been running a full month"}
+      ]}
+    ]
+  },
+
+  sites: {
+    label:"Restoration sites", tool:"Tool 5", icon:"tree", idp:"S",
+    note:"No site may be planted until tenure and written permission are recorded. Hectares here roll up to indicator 1.5.",
+    sections:[
+      {h:"Site", f:[
+        {id:"name", l:"Site name", t:"text", req:1},
+        {id:"village", l:"Village", t:"select", o:VILLAGES, req:1},
+        {id:"type", l:"Site type", t:"select", o:[["buffer","Park buffer strip"],["wetland","Magombe wetland edge"],["farm","Degraded farmland"],["inst","Institutional land"],["public","Roadside / public"],["nursery","Nursery site"]]},
+        {id:"lat", l:"GPS latitude", t:"num", step:"any"},
+        {id:"lon", l:"GPS longitude", t:"num", step:"any"},
+        {id:"hectares", l:"Area (hectares) — indicator 1.5", t:"num", step:"any"}
+      ]},
+      {h:"Tenure — complete before any planting", f:[
+        {id:"tenure", l:"Who controls the land", t:"select", o:[["household","Individual household"],["clan","Clan / customary"],["inst","Institution"],["council","Town Council"],["govt","Government / UWA"],["disputed","Contested"]]},
+        {id:"owner", l:"Owner or controlling authority", t:"text"},
+        {id:"permission", l:"Written permission to plant", t:"select", o:[[1,"Yes, obtained"],[2,"Verbal only"],[0,"Not yet"],[3,"Refused"]], req:1},
+        {id:"caretaker", l:"Named caretaker after planting", t:"text", hint:"No site is planted without one"}
+      ]},
+      {h:"Planting and survival", f:[
+        {id:"planned", l:"Seedlings planned for this site", t:"num"},
+        {id:"planted", l:"Seedlings actually planted — indicator 1.4", t:"num"},
+        {id:"plant_date", l:"Date planted", t:"date"},
+        {id:"survived_12", l:"Seedlings surviving at 12 months", t:"num", hint:"Target is at least 70% of those planted"},
+        {id:"species", l:"Main species planted", t:"text"},
+        {id:"barrier", l:"Non-palatable barrier species on the Park-facing edge", t:"select", o:YN}
+      ]}
+    ]
+  },
+
+  vslas: {
+    label:"VSLA groups", tool:"Tool 6", icon:"users", idp:"V",
+    note:"One record per existing or prospective savings group. Feeds indicators 1.6 and 1.7.",
+    sections:[
+      {h:"Group", f:[
+        {id:"name", l:"Group name", t:"text", req:1},
+        {id:"village", l:"Village", t:"select", o:VILLAGES, req:1},
+        {id:"status", l:"Status", t:"select", req:1, o:[["active","Existing and active"],["dormant","Existing but dormant"],["collapsed","Collapsed"],["prospective","Prospective"],["formed","Formed by this project"]]},
+        {id:"year", l:"Year formed", t:"num"}
+      ]},
+      {h:"Membership — indicator 1.6", f:[
+        {id:"female", l:"Female members", t:"num"},
+        {id:"male", l:"Male members", t:"num"},
+        {id:"youth", l:"Youth members (18–30)", t:"num"},
+        {id:"elderly", l:"Elderly members (60+)", t:"num"},
+        {id:"pwd", l:"Members with disability", t:"num"},
+        {id:"households", l:"Households represented", t:"num", req:1}
+      ]},
+      {h:"Operation and enterprise — indicator 1.7", f:[
+        {id:"constitution", l:"Has a written constitution", t:"select", o:YN},
+        {id:"records", l:"Keeps written savings and loan records", t:"select", o:[[1,"Yes, up to date"],[2,"Yes, incomplete"],[0,"No"]]},
+        {id:"savings", l:"Total savings held (UGX)", t:"num"},
+        {id:"enterprises", l:"Enterprises initiated by members", t:"num"},
+        {id:"trained", l:"Members trained in financial literacy", t:"num"}
+      ]}
+    ]
+  },
+
+  knowledge: {
+    label:"Knowledge test", tool:"Tool 7", icon:"check", idp:"K",
+    note:"One record per participant per sitting. The same eight questions are repeated at endline, word for word, or indicator 1.8 cannot be computed.",
+    sections:[
+      {h:"Participant", f:[
+        {id:"stage", l:"Stage", t:"select", req:1, o:[["baseline","Baseline"],["midterm","Mid-term"],["endline","Endline"]]},
+        {id:"village", l:"Village", t:"select", o:VILLAGES, req:1},
+        {id:"session", l:"Session reference", t:"text", hint:"e.g. LAUNCH-01"},
+        {id:"date", l:"Date", t:"date"},
+        {id:"sex", l:"Sex", t:"select", o:SEX},
+        {id:"age", l:"Age", t:"num"},
+        {id:"participant", l:"Participant name or code", t:"text", req:1, hint:"Needed to match baseline to endline"}
+      ]},
+      {h:"The eight questions — 1 correct, 0 incorrect", f:[
+        {id:"q1", l:"Q1 Which endangered great ape lives in Kibale", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q2", l:"Q2 Is cutting firewood in the Park lawful", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q3", l:"Q3 Can name one benefit of the Park", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q4", l:"Q4 What an efficient cookstove mainly does", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q5", l:"Q5 Farm trees reduce forest collection", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q6", l:"Q6 Can name an indigenous tree species", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q7", l:"Q7 First action if a chimpanzee raids crops", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]},
+        {id:"q8", l:"Q8 What a VSLA is", t:"select", o:[[1,"Correct"],[0,"Incorrect"]]}
+      ]}
+    ]
+  }
+};
+
+const ICONS = {
+  gauge:'<path d="M3 13a9 9 0 0 1 18 0"/><path d="M12 13l4-3"/>',
+  pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  table:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>',
+  chart:'<path d="M3 3v18h18"/><path d="M7 15l3-4 3 2 4-6"/>',
+  book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M8 7h7"/>',
+  home:'<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
+  flame:'<path d="M12 3s5 4 5 9a5 5 0 0 1-10 0c0-2 1-3 1-3s1 2 2 2 2-5 2-8Z"/>',
+  tree:'<path d="M12 21v-6"/><path d="M12 15 7 9h3L7 4h10l-3 5h3Z"/>',
+  users:'<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M18 20a6 6 0 0 0-2-4.3"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>'
+};
+const icon = n => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[n]||"")+'</svg>';
+
+/* ========== state ========== */
+const TABS = [
+  {id:"indicators", label:"Indicators", icon:"gauge"},
+  {id:"collect",    label:"Collect",    icon:"pencil"},
+  {id:"records",    label:"Records",    icon:"table"},
+  {id:"analyse",    label:"Analyse",    icon:"chart"},
+  {id:"reference",  label:"Reference",  icon:"book"}
+];
+const KEYS = Object.keys(FORMS);
+const store = {}; KEYS.forEach(k => store[k] = []);
+let db = null, userCap = null, canWrite = null, ready = false;
+let tab = "indicators", collectForm = "households", recordSet = "households", search = "";
+let manual = {ambassadors:0};
+
+const el = (t,c,h) => { const n=document.createElement(t); if(c)n.className=c; if(h!=null)n.innerHTML=h; return n; };
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+const MISSING = new Set([997,998,999]);
+const clean = v => (v==null || v==="" || MISSING.has(Number(v))) ? null : Number(v);
+const fmt = (n,d) => n==null ? "—" : Number(n).toLocaleString("en-GB",{maximumFractionDigits:d==null?0:d});
+const pct = n => n==null ? "—" : (n*100).toFixed(n*100 < 10 ? 1 : 0) + "%";
+
+try { const t = localStorage.getItem("empundu.tab"); if (t && TABS.some(x=>x.id===t)) tab = t; } catch(e){}
+
+/* ========== indicator computation ========== */
+function vals(key, field){ return store[key].map(r => clean(r[field])).filter(v => v!==null); }
+
+function indicatorValue(ind){
+  const I = store.institutions, S = store.sites, V = store.vslas, K = store.knowledge;
+  switch(ind.ref){
+    case "1.1": return I.filter(r => Number(r.installed) === 1).length;
+    case "1.2": {
+      const base = I.reduce((a,r) => a + (clean(r.units_month) || 0), 0);
+      const now  = I.filter(r => clean(r.units_now) !== null);
+      if (!base || !now.length) return null;
+      const nowSum = now.reduce((a,r) => a + clean(r.units_now), 0);
+      const baseOfThose = now.reduce((a,r) => a + (clean(r.units_month) || 0), 0);
+      if (!baseOfThose) return null;
+      return Math.max(0, (1 - nowSum / baseOfThose) * 100);
+    }
+    case "1.3": return I.reduce((a,r) => a + (clean(r.trained) || 0), 0);
+    case "1.4": return S.reduce((a,r) => a + (clean(r.planted) || 0), 0);
+    case "1.5": return S.filter(r => clean(r.planted)).reduce((a,r) => a + (clean(r.hectares) || 0), 0);
+    case "1.6": return V.filter(r => r.status === "active" || r.status === "formed")
+                        .reduce((a,r) => a + (clean(r.households) || 0), 0);
+    case "1.7": return V.reduce((a,r) => a + (clean(r.enterprises) || 0), 0);
+    case "1.8": return new Set(K.filter(r => r.participant).map(r => (r.participant||"").trim().toLowerCase())).size;
+    case "1.9": return manual.ambassadors || 0;
+  }
+  return null;
+}
+
+function knowledgeImprovement(){
+  const by = new Map();
+  store.knowledge.forEach(r => {
+    const k = (r.participant||"").trim().toLowerCase(); if(!k) return;
+    const s = score(r); if (s==null) return;
+    const e = by.get(k) || {};
+    if (r.stage === "baseline") e.base = s;
+    if (r.stage === "endline")  e.end = s;
+    by.set(k, e);
+  });
+  let paired = 0, improved = 0;
+  by.forEach(v => { if (v.base!=null && v.end!=null){ paired++; if (v.end > v.base) improved++; } });
+  return {paired, improved, rate: paired ? improved/paired : null};
+}
+function score(r){
+  const q = ["q1","q2","q3","q4","q5","q6","q7","q8"].map(k => clean(r[k]));
+  if (q.some(v => v===null)) return null;
+  return q.reduce((a,b)=>a+b,0);
+}
+
+/* ========== rendering ========== */
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = "";
+  TABS.forEach(t => {
+    const b = el("button", null, icon(t.icon) + "<span>" + t.label + "</span>");
+    b.setAttribute("aria-current", t.id === tab ? "true" : "false");
+    if (t.id === "records"){
+      const n = KEYS.reduce((a,k)=>a+store[k].length,0);
+      b.appendChild(el("span","ct", n ? String(n) : ""));
+    }
+    b.onclick = () => { tab = t.id; try{localStorage.setItem("empundu.tab",t.id)}catch(e){} render(); };
+    nav.appendChild(b);
+  });
+}
+
+function head(title, sub, extra){
+  const h = el("div","head");
+  const box = el("div"); box.appendChild(el("h1",null,esc(title)));
+  if (sub) box.appendChild(el("p",null,esc(sub)));
+  h.appendChild(box); h.appendChild(el("div","spacer"));
+  if (extra) h.appendChild(extra);
+  return h;
+}
+
+function writeBanner(){
+  if (canWrite === false)
+    return el("div","banner warnbox","<span><b>Read-only.</b> You can browse and export everything here, but saving a record needs Contributor access. Ask the project owner to raise your access in the share menu.</span>");
+  if (!ready)
+    return el("div","banner","<span><b>Connecting to the shared store.</b> Records will appear once it answers. If this stays here, you are signed out, and the page cannot read or save project data.</span>");
+  return null;
+}
+
+/* ---------- indicators tab ---------- */
+function viewIndicators(){
+  const w = el("div");
+  w.appendChild(head("Project indicators",
+    "The nine performance targets accepted in Annex A of the signed Grant Agreement. Values compute from the records collected in this platform; nothing here is entered by hand except the ambassador count."));
+  const b = writeBanner(); if (b) w.appendChild(b);
+
+  const totalRecords = KEYS.reduce((a,k)=>a+store[k].length,0);
+  const ki = knowledgeImprovement();
+  const tiles = el("div","tiles");
+  [["Records collected", fmt(totalRecords), "across five instruments"],
+   ["Households surveyed", fmt(store.households.length), "target 180"],
+   ["Institutions assessed", fmt(store.institutions.filter(r=>clean(r.units_month)!==null).length) + " / 6", "firewood baseline measured"],
+   ["Knowledge improvement", ki.rate==null ? "—" : pct(ki.rate), ki.paired ? ki.paired+" matched pairs" : "needs baseline and endline"]
+  ].forEach(([k,v,n]) => {
+    const t = el("div","tile");
+    t.appendChild(el("div","k",esc(k))); t.appendChild(el("div","v",esc(v))); t.appendChild(el("div","n",esc(n)));
+    tiles.appendChild(t);
+  });
+  w.appendChild(tiles);
+
+  const list = el("div","ind");
+  INDICATORS.forEach(ind => {
+    const v = indicatorValue(ind);
+    const frac = v==null ? 0 : Math.max(0, Math.min(1, v / ind.target));
+    const row = el("div","ind-row");
+    row.appendChild(el("div","ind-ref",esc(ind.ref)));
+    const mid = el("div");
+    mid.appendChild(el("div","ind-name",esc(ind.name)));
+    mid.appendChild(el("div","ind-target","Target: " + fmt(ind.target, ind.pct?0:(ind.target<20?1:0)) + " " + esc(ind.unit)));
+    row.appendChild(mid);
+    const right = el("div","ind-val");
+    right.appendChild(el("div","ind-num", v==null ? "—" : fmt(v, ind.target<20 ? 1 : 0) + (ind.pct ? "%" : "")));
+    const state = v==null || v===0 ? ["none","Not started"]
+                : frac >= 1 ? ["go","Target met"]
+                : ["mid", Math.round(frac*100) + "% of target"];
+    right.appendChild(el("div","ind-of",'<span class="pill '+state[0]+'">'+esc(state[1])+"</span>"));
+    row.appendChild(right);
+    const track = el("div","track");
+    const fill = el("div","fill" + (frac===0 ? " zero" : ""));
+    fill.style.width = (frac*100).toFixed(1) + "%";
+    if (frac >= 1) fill.style.background = "var(--good)";
+    track.appendChild(fill); row.appendChild(track);
+    list.appendChild(row);
+  });
+  w.appendChild(list);
+
+  w.appendChild(el("div","note",
+    "Indicator 1.2 compares the current monthly firewood figure against the baseline figure for the same institutions, so it stays blank until at least one stove has run a full month. Indicator 1.8 counts distinct participants; the improvement rate in the tile above is computed by matching each participant's baseline and endline score, not by comparing the two averages."));
+  return w;
+}
+
+/* ---------- collect tab ---------- */
+function viewCollect(){
+  const w = el("div");
+  const spec = FORMS[collectForm];
+  w.appendChild(head("Collect", "Digital versions of the instruments in the Baseline Data Collection Toolkit. Field codes match the toolkit's codebook, so a paper form transcribes straight in."));
+  const b = writeBanner(); if (b) w.appendChild(b);
+
+  const seg = el("div","seg");
+  KEYS.forEach(k => {
+    const btn = el("button",null, esc(FORMS[k].label) + ' <span class="mono" style="opacity:.65">' + FORMS[k].tool.replace("Tool ","T") + "</span>");
+    btn.setAttribute("aria-pressed", k===collectForm ? "true":"false");
+    btn.onclick = () => { collectForm = k; render(); };
+    seg.appendChild(btn);
+  });
+  w.appendChild(seg);
+
+  w.appendChild(el("div","banner","<span>" + esc(spec.note) + "</span>"));
+
+  const form = el("form","form"); form.id = "entry";
+  spec.sections.forEach(sec => {
+    const s = el("div","fsec");
+    s.appendChild(el("h3",null,esc(sec.h)));
+    let pair = null;
+    sec.f.forEach(f => {
+      const wrap = el("div","f");
+      const fid = "f_" + collectForm + "_" + f.id;
+      wrap.appendChild(el("label",null, esc(f.l) + (f.req ? ' <span class="req">*</span>' : "")));
+      let input;
+      if (f.t === "select"){
+        input = el("select");
+        input.appendChild(new Option("—",""));
+        f.o.forEach(([v,l]) => input.appendChild(new Option(l, v)));
+      } else if (f.t === "textarea"){
+        input = el("textarea"); input.rows = 3;
+      } else {
+        input = el("input");
+        input.type = f.t === "num" ? "number" : f.t === "date" ? "date" : "text";
+        if (f.step) input.step = f.step;
+      }
+      input.id = fid; input.name = f.id;
+      if (f.req) input.required = true;
+      wrap.appendChild(input);
+      if (f.hint) wrap.appendChild(el("div","hint",esc(f.hint)));
+      const short = f.t === "num" || f.t === "date";
+      if (short && !pair){ pair = el("div","f2"); s.appendChild(pair); pair.appendChild(wrap); }
+      else if (short && pair){ pair.appendChild(wrap); pair = null; }
+      else { pair = null; s.appendChild(wrap); }
+    });
+    form.appendChild(s);
+  });
+
+  const bar = el("div","formbar");
+  const save = el("button","btn"); save.type = "submit"; save.textContent = "Save record";
+  if (canWrite === false || !ready) save.disabled = true;
+  const clearBtn = el("button","btn ghost sm"); clearBtn.type = "button"; clearBtn.textContent = "Clear form";
+  const msg = el("span","msg");
+  bar.appendChild(save); bar.appendChild(clearBtn); bar.appendChild(msg);
+  form.appendChild(bar);
+
+  clearBtn.onclick = () => { form.reset(); msg.textContent = ""; };
+
+  form.onsubmit = async (ev) => {
+    ev.preventDefault();
+    if (!db){ msg.textContent = "No connection to the store — the record was not saved."; return; }
+    const rec = {};
+    spec.sections.forEach(sec => sec.f.forEach(f => {
+      const v = form.elements[f.id] ? form.elements[f.id].value : "";
+      if (v === "") return;
+      rec[f.id] = (f.t === "num" || f.t === "select") ? num(v) : v;
+    }));
+    rec._created = new Date().toISOString();
+    rec._ref = spec.idp + "/" + (rec.village || "—") + "/" + String(store[collectForm].length + 1).padStart(3,"0");
+    save.disabled = true; msg.textContent = "Saving…";
+    try {
+      await db.collection(collectForm).add(rec);
+      msg.textContent = "Saved as " + rec._ref + ".";
+      form.reset();
+    } catch(e){
+      msg.textContent = e && e.code === "invalid_argument"
+        ? "Refused — your access does not allow saving records."
+        : "Could not save. Check the connection and try once more.";
+      canWrite = e && e.code === "invalid_argument" ? false : canWrite;
+    }
+    save.disabled = canWrite === false;
+  };
+
+  w.appendChild(form);
+  return w;
+}
+
+/* ---------- records tab ---------- */
+function columnsFor(key){
+  const cols = [{id:"_ref", l:"Ref"}];
+  FORMS[key].sections.forEach(s => s.f.forEach(f => cols.push({id:f.id, l:f.l.replace(/^[A-Z]\d+(_\w+)? /,""), f})));
+  return cols;
+}
+function cellText(f, v){
+  if (v == null || v === "") return "—";
+  if (f && f.o){ const hit = f.o.find(o => String(o[0]) === String(v)); if (hit) return hit[1]; }
+  return String(v);
+}
+function viewRecords(){
+  const w = el("div");
+  const rows = store[recordSet];
+  const dl = el("button","btn ghost sm"); dl.textContent = "Export CSV";
+  dl.onclick = () => exportCsv(recordSet);
+  w.appendChild(head("Records", "Everything collected, by instrument. Search filters across every field in the table.", dl));
+  const b = writeBanner(); if (b) w.appendChild(b);
+
+  const seg = el("div","seg");
+  KEYS.forEach(k => {
+    const btn = el("button",null, esc(FORMS[k].label) + ' <span class="mono" style="opacity:.65">' + store[k].length + "</span>");
+    btn.setAttribute("aria-pressed", k===recordSet ? "true":"false");
+    btn.onclick = () => { recordSet = k; search = ""; render(); };
+    seg.appendChild(btn);
+  });
+  w.appendChild(seg);
+
+  const tb = el("div","toolbar");
+  const s = el("input"); s.type = "search"; s.placeholder = "Search " + FORMS[recordSet].label.toLowerCase() + "…";
+  s.value = search; s.id = "recsearch";
+  s.oninput = () => { search = s.value; const t = document.getElementById("tablehost"); if (t) drawTable(t); };
+  tb.appendChild(s);
+  w.appendChild(tb);
+
+  const host = el("div"); host.id = "tablehost";
+  w.appendChild(host);
+  drawTable(host);
+  return w;
+}
+function filtered(){
+  const q = search.trim().toLowerCase();
+  if (!q) return store[recordSet];
+  return store[recordSet].filter(r => Object.values(r).some(v => String(v==null?"":v).toLowerCase().includes(q)));
+}
+function drawTable(host){
+  host.innerHTML = "";
+  const rows = filtered();
+  if (!rows.length){
+    const e = el("div","empty");
+    e.appendChild(el("b", null, store[recordSet].length ? "No match" : "No " + FORMS[recordSet].label.toLowerCase() + " records yet"));
+    e.appendChild(el("p", null, store[recordSet].length
+      ? "Nothing in this instrument matches that search."
+      : "Records saved on the Collect tab appear here, and feed the indicators and analysis automatically."));
+    host.appendChild(e);
+    return;
+  }
+  const cols = columnsFor(recordSet);
+  const wrap = el("div","tablewrap");
+  const t = el("table");
+  const thead = el("thead"); const htr = el("tr");
+  cols.forEach(c => htr.appendChild(el("th",null,esc(c.l))));
+  thead.appendChild(htr); t.appendChild(thead);
+  const tb = el("tbody");
+  rows.forEach(r => {
+    const tr = el("tr");
+    cols.forEach(c => {
+      const v = r[c.id];
+      const isNum = c.f && c.f.t === "num";
+      const td = el("td", isNum ? "num" : null, esc(cellText(c.f, v)));
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t); host.appendChild(wrap);
+  host.appendChild(el("div","note", fmt(rows.length) + " of " + fmt(store[recordSet].length) + " records shown."));
+}
+
+/* ---------- analyse tab ---------- */
+function dist(key, field, opts){
+  const counts = new Map();
+  store[key].forEach(r => {
+    const v = r[field];
+    if (v == null || v === "") return;
+    counts.set(String(v), (counts.get(String(v)) || 0) + 1);
+  });
+  const total = [...counts.values()].reduce((a,b)=>a+b,0);
+  if (!total) return null;
+  const items = opts.map(([v,l]) => ({label:l, n: counts.get(String(v)) || 0}))
+                    .filter(x => x.n > 0)
+                    .sort((a,b) => b.n - a.n);
+  return {items, total};
+}
+function barChart(title, cap, data, color){
+  const c = el("div","chart");
+  c.appendChild(el("h3",null,esc(title)));
+  c.appendChild(el("div","cap",esc(cap)));
+  if (!data){ c.appendChild(el("div","empty","<b>No data yet</b><p>This chart fills once household records are saved.</p>")); return c; }
+  const max = Math.max(...data.items.map(i => i.n));
+  const bars = el("div","bars");
+  data.items.forEach(i => {
+    const row = el("div","bar-row");
+    row.appendChild(el("div","bar-lab",esc(i.label)));
+    const tr = el("div","bar-track");
+    const fl = el("div","bar-fill");
+    fl.style.width = Math.max(2, (i.n/max)*100) + "%";
+    fl.style.background = color;
+    tr.appendChild(fl); row.appendChild(tr);
+    row.appendChild(el("div","bar-val", i.n + " · " + Math.round(i.n/data.total*100) + "%"));
+    bars.appendChild(row);
+  });
+  c.appendChild(bars);
+  c.appendChild(el("div","note","n = " + data.total + " answering."));
+  return c;
+}
+function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null; }
+
+function viewAnalyse(){
+  const w = el("div");
+  w.appendChild(head("Analyse", "Summary statistics computed live from the records. Every figure states how many respondents it is based on."));
+  const b = writeBanner(); if (b) w.appendChild(b);
+
+  const H = store.households;
+  if (!H.length){
+    w.appendChild(el("div","empty","<b>Nothing to analyse yet</b><p>Save household records on the Collect tab and the baseline statistics, distributions and knowledge scores appear here automatically.</p>"));
+    return w;
+  }
+
+  const bundles = vals("households","c3_bundles");
+  const hours = vals("households","c6_hours");
+  const fromPark = H.filter(r => [2,3].includes(Number(r.c4_source))).length;
+  const answeredSource = H.filter(r => clean(r.c4_source) !== null).length;
+  const female = H.filter(r => Number(r.b1_sex) === 1).length;
+  const raid = H.filter(r => Number(r.g1_raid) === 1).length;
+  const answeredRaid = H.filter(r => [0,1].includes(Number(r.g1_raid))).length;
+  const vsla = H.filter(r => Number(r.e1_vsla) === 1).length;
+  const answeredVsla = H.filter(r => [0,1].includes(Number(r.e1_vsla))).length;
+
+  const tiles = el("div","tiles");
+  [["Households", fmt(H.length), "of 180 target"],
+   ["Mean bundles / week", mean(bundles)==null?"—":mean(bundles).toFixed(1), bundles.length + " answering"],
+   ["Collecting from Park or wetland", answeredSource ? Math.round(fromPark/answeredSource*100)+"%" : "—", answeredSource + " answering"],
+   ["Mean trip time", mean(hours)==null?"—":mean(hours).toFixed(1)+" h", hours.length + " answering"],
+   ["Female respondents", H.length ? Math.round(female/H.length*100)+"%" : "—", "quota is 50%"],
+   ["Reporting crop raiding", answeredRaid ? Math.round(raid/answeredRaid*100)+"%" : "—", answeredRaid + " answering"]
+  ].forEach(([k,v,n]) => {
+    const t = el("div","tile");
+    t.appendChild(el("div","k",esc(k))); t.appendChild(el("div","v",esc(v))); t.appendChild(el("div","n",esc(n)));
+    tiles.appendChild(t);
+  });
+  w.appendChild(tiles);
+
+  const g = el("div","grid"); g.style.gridTemplateColumns = "repeat(auto-fit,minmax(300px,1fr))";
+  const fuelField = FORMS.households.sections[2].f.find(f=>f.id==="c1_fuel");
+  const srcField  = FORMS.households.sections[2].f.find(f=>f.id==="c4_source");
+  const stoveField= FORMS.households.sections[2].f.find(f=>f.id==="c2_stove");
+  g.appendChild(barChart("Main cooking fuel","Share of households by primary fuel", dist("households","c1_fuel",fuelField.o), "var(--s1)"));
+  g.appendChild(barChart("Firewood source","Where households obtain their firewood", dist("households","c4_source",srcField.o), "var(--s2)"));
+  g.appendChild(barChart("Stove in use","Current cooking technology", dist("households","c2_stove",stoveField.o), "var(--s3)"));
+  w.appendChild(g);
+
+  const ki = knowledgeImprovement();
+  const scores = store.knowledge.map(score).filter(v=>v!==null);
+  const kc = el("div","chart"); kc.style.marginTop = "12px";
+  kc.appendChild(el("h3",null,"Conservation knowledge"));
+  kc.appendChild(el("div","cap","Indicator 1.8 requires at least 70% of sampled participants to improve between baseline and endline."));
+  const kv = el("dl","kv");
+  [["Tests recorded", fmt(store.knowledge.length)],
+   ["Mean score", scores.length ? mean(scores).toFixed(2) + " / 8" : "—"],
+   ["Matched baseline–endline pairs", fmt(ki.paired)],
+   ["Participants improved", ki.paired ? fmt(ki.improved) : "—"],
+   ["Improvement rate", ki.rate==null ? "—" : pct(ki.rate)]
+  ].forEach(([k,v]) => { kv.appendChild(el("dt",null,esc(k))); kv.appendChild(el("dd",null,esc(v))); });
+  kc.appendChild(kv);
+  if (ki.paired === 0) kc.appendChild(el("div","note","The improvement rate needs the same participant tested twice, matched on the participant name or code. Record the baseline test before any awareness session begins."));
+  w.appendChild(kc);
+
+  w.appendChild(el("div","note","Missing-value codes from the toolkit (997 not applicable, 998 refused, 999 don't know) are excluded from every mean and percentage above, so denominators differ between figures. Each one states its own."));
+  return w;
+}
+
+/* ---------- reference tab ---------- */
+function viewReference(){
+  const w = el("div");
+  w.appendChild(head("Reference", "Fixed project facts the platform computes against, taken from the signed Grant Agreement and the approved work plan."));
+
+  const g = el("div","grid"); g.style.gridTemplateColumns = "repeat(auto-fit,minmax(280px,1fr))";
+
+  const c1 = el("div","card");
+  c1.appendChild(el("h3",null,"Grant"));
+  const d1 = el("dl","kv"); d1.style.marginTop = "10px";
+  [["Project No.","01004207"],["Grant (USD)","40,000"],["Grant (UGX)","150,316,400"],
+   ["Exchange rate","3,757.91 UGX/USD"],["Tranche 1","USD 20,000"],["Tranche 2","USD 16,000"],["Tranche 3","USD 4,000"],
+   ["Agreement signed","22 September 2026"]
+  ].forEach(([k,v]) => { d1.appendChild(el("dt",null,esc(k))); d1.appendChild(el("dd",null,esc(v))); });
+  c1.appendChild(d1);
+  c1.appendChild(el("div","note","Clause 3.3: payments are not adjusted for currency fluctuation, so the shilling figures are a ceiling."));
+  g.appendChild(c1);
+
+  const c2 = el("div","card");
+  c2.appendChild(el("h3",null,"Area"));
+  const d2 = el("dl","kv"); d2.style.marginTop = "10px";
+  [["Villages","Nyabubare · Kiyoima · Nkingo"],["Sub-county","Bigodi Town Council"],["District","Kamwenge"],
+   ["Coordinates","0°24'40\"N, 30°24'13\"E"],["Boundary","Kibale National Park, eastern edge"]
+  ].forEach(([k,v]) => { d2.appendChild(el("dt",null,esc(k))); d2.appendChild(el("dd",null,esc(v))); });
+  c2.appendChild(d2);
+  g.appendChild(c2);
+
+  const c3 = el("div","card");
+  c3.appendChild(el("h3",null,"Partner institutions"));
+  const ul = el("div"); ul.style.marginTop = "10px"; ul.style.fontSize = "12.5px";
+  const seeded = store.institutions.map(r => r.name);
+  (seeded.length ? seeded : ["Seeded once the store answers"]).forEach(n => {
+    const row = el("div"); row.style.padding = "4px 0"; row.style.borderBottom = "1px solid var(--line)";
+    row.textContent = n; ul.appendChild(row);
+  });
+  c3.appendChild(ul);
+  g.appendChild(c3);
+  w.appendChild(g);
+
+  const c4 = el("div","card"); c4.style.marginTop = "12px";
+  c4.appendChild(el("h3",null,"Indicator 1.9 — conservation ambassadors"));
+  c4.appendChild(el("p",null,"This is the one indicator with no instrument behind it. Record the count from the ambassador register kept under Activity 4.2."));
+  c4.querySelector("p").style.cssText = "font-size:12.5px;color:var(--muted);margin:6px 0 11px";
+  const row = el("div","toolbar");
+  const inp = el("input"); inp.type = "number"; inp.min = "0"; inp.value = manual.ambassadors || 0;
+  inp.id = "amb"; inp.style.cssText = "max-width:110px;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:7px 11px";
+  const sv = el("button","btn sm"); sv.textContent = "Save count";
+  if (canWrite === false || !ready) sv.disabled = true;
+  const m = el("span","msg"); m.style.cssText = "font-size:12.5px;color:var(--muted)";
+  sv.onclick = async () => {
+    if (!db) return;
+    sv.disabled = true; m.textContent = "Saving…";
+    try { await db.doc("meta/manual").set({ambassadors: num(inp.value) || 0, _updated: new Date().toISOString()});
+          m.textContent = "Saved."; }
+    catch(e){ m.textContent = "Could not save."; }
+    sv.disabled = canWrite === false;
+  };
+  row.appendChild(inp); row.appendChild(sv); row.appendChild(m);
+  c4.appendChild(row);
+  w.appendChild(c4);
+
+  w.appendChild(el("div","note","Field codes, missing-value codes and the sampling plan live in the Baseline Data Collection Toolkit, which this platform mirrors. Where the two disagree, the toolkit is the authority — the paper form is what the respondent actually answered."));
+  return w;
+}
+
+/* ---------- CSV ---------- */
+async function exportCsv(key){
+  const cols = columnsFor(key);
+  const rows = store[key];
+  const q = s => '"' + String(s==null?"":s).replace(/"/g,'""') + '"';
+  const lines = [cols.map(c => q(c.l)).join(",")];
+  rows.forEach(r => lines.push(cols.map(c => q(cellText(c.f, r[c.id]))).join(",")));
+  const csv = "﻿" + lines.join("\r\n");
+  const name = "empundu-" + key + "-" + new Date().toISOString().slice(0,10) + ".csv";
+  const dl = await (window.claude && window.claude.use ? window.claude.use("downloads") : null);
+  if (dl){
+    try { await dl.save({filename:name, data:csv}); return; } catch(e){}
+  }
+  const t = document.getElementById("tablehost");
+  if (t){
+    const n = el("div","note");
+    n.textContent = "Download was declined or is unavailable in this view. Select the table and copy it instead.";
+    t.appendChild(n);
+  }
+}
+
+/* ---------- main render ---------- */
+function render(){
+  renderNav();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const v = tab === "indicators" ? viewIndicators()
+          : tab === "collect"    ? viewCollect()
+          : tab === "records"    ? viewRecords()
+          : tab === "analyse"    ? viewAnalyse()
+          : viewReference();
+  main.appendChild(v);
+}
+render();
+
+/* ---------- store wiring ---------- */
+(async function connect(){
+  const ledEl = document.getElementById("led");
+  const connEl = document.getElementById("conn");
+  const who = document.getElementById("whoami");
+  if (!(window.claude && window.claude.use)){
+    ledEl.className = "led off"; connEl.textContent = "Offline — no store"; return;
+  }
+  try { userCap = await window.claude.use("user"); } catch(e){}
+  if (userCap){
+    try { const c = await userCap.can("data.write"); canWrite = c; } catch(e){}
+    try { who.textContent = (await userCap.isOwner()) ? "Signed in as project owner" : "Signed in"; } catch(e){}
+  }
+  db = await window.claude.use("db");
+  if (!db){
+    ledEl.className = "led off";
+    connEl.textContent = "Not connected";
+    ready = false; render(); return;
+  }
+  ledEl.className = "led on";
+  connEl.textContent = "Store connected";
+  ready = true;
+
+  KEYS.forEach(k => {
+    db.collection(k).onSnapshot(
+      snap => { store[k] = snap.docs.map(d => Object.assign({_id:d.id}, d.data())); render(); },
+      err => { connEl.textContent = "Store error (" + err.code + ")"; ledEl.className = "led off"; }
+    );
+  });
+  db.doc("meta/manual").onSnapshot(
+    snap => { manual = snap.exists ? (snap.data() || {}) : {ambassadors:0}; render(); },
+    () => {}
+  );
+  render();
+})();
+</script>
+
+</body></html>
