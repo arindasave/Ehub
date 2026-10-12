@@ -804,18 +804,8 @@ function viewIndicators(){
 /* ===== REFERENCE ===== */
 function viewReference(){
   const w=el("div");
-  w.appendChild(head("Reference","Fixed project facts the platform computes against, from the signed Grant Agreement and the approved work plan."));
+  w.appendChild(head("Reference","Fixed project facts the platform computes against, from the approved project document and work plan."));
   const g=el("div","grid"); g.style.gridTemplateColumns="repeat(auto-fit,minmax(280px,1fr))";
-
-  const c1=el("div","card"); c1.appendChild(el("h3",null,"Grant"));
-  const d1=el("dl","kv"); d1.style.marginTop="10px";
-  [["Project No.","01004207"],["Grant (USD)","40,000"],["Grant (UGX)","150,316,400"],
-   ["Exchange rate","3,757.91 UGX/USD"],["Tranche 1","USD 20,000"],["Tranche 2","USD 16,000"],
-   ["Tranche 3","USD 4,000"],["Agreement signed","22 September 2026"]
-  ].forEach(([k,v])=>{d1.appendChild(el("dt",null,esc(k))); d1.appendChild(el("dd",null,esc(v)));});
-  c1.appendChild(d1);
-  c1.appendChild(el("div","note","Clause 3.3: payments are not adjusted for currency fluctuation, so the shilling figures are a ceiling."));
-  g.appendChild(c1);
 
   const c2=el("div","card"); c2.appendChild(el("h3",null,"Area"));
   const d2=el("dl","kv"); d2.style.marginTop="10px";
